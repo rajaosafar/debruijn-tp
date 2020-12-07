@@ -23,6 +23,7 @@ import random
 random.seed(9001)
 from random import randint
 import statistics
+import matplotlib.pyplot as plt
 
 __author__ = "Your Name"
 __copyright__ = "Universite Paris Diderot"
@@ -64,18 +65,18 @@ def get_arguments():
                         help="Output contigs in fasta file")
     return parser.parse_args()
 
-
 def read_fastq(fastq_file):
     with open(fastq_file, "rt") as myfile:
         for line in myfile:
-            yield next(myfile)
+            yield next(myfile).replace('\n', '')
             next(myfile)
             next(myfile)
 
 def cut_kmer(read, kmer_size):
     for i, letter in enumerate(read):
-        if i<=len(read)-kmer_size-1:
+        if i<=len(read)-kmer_size:
             yield read[i:i+kmer_size]
+
 
 def build_kmer_dict(fastq_file, kmer_size):
     lines = read_fastq(fastq_file)
@@ -93,8 +94,10 @@ def build_kmer_dict(fastq_file, kmer_size):
     return dict_kmers
 
 def build_graph(kmer_dict):
-    pass
-
+    graph = nx.DiGraph()
+    for kmer, weight in kmer_dict.items():
+        graph.add_edge(kmer[:(len(kmer)-1)], kmer[1:], weight=weight)
+    return graph
 
 def remove_paths(graph, path_list, delete_entry_node, delete_sink_node):
     pass
@@ -134,6 +137,26 @@ def get_contigs(graph, starting_nodes, ending_nodes):
 def save_contigs(contigs_list, output_file):
     pass
 
+def draw_graph(graph, graphimg_file):
+    """Draw the graph
+    """
+    fig, ax = plt.subplots()
+    elarge = [(u, v) for (u, v, d) in graph.edges(data=True) if d['weight'] > 3]
+    #print(elarge)
+    esmall = [(u, v) for (u, v, d) in graph.edges(data=True) if d['weight'] <= 3]
+    #print(elarge)
+    # Draw the graph with networkx
+    #pos=nx.spring_layout(graph)
+    pos = nx.random_layout(graph)
+    nx.draw_networkx_nodes(graph, pos, node_size=6)
+    nx.draw_networkx_edges(graph, pos, edgelist=elarge, width=6)
+    nx.draw_networkx_edges(graph, pos, edgelist=esmall, width=6, alpha=0.5,
+                           edge_color='b', style='dashed')
+    #nx.draw_networkx(graph, pos, node_size=10, with_labels=False)
+    # save image
+    plt.savefig(graphimg_file)
+
+
 #==============================================================
 # Main program
 #==============================================================
@@ -145,8 +168,10 @@ def main():
     args = get_arguments()
 
     fastq_file = args.fastq_file
-
-    print(build_kmer_dict(fastq_file, 3))
+    kmer_dict = build_kmer_dict(fastq_file, 3)
+    print(kmer_dict)
+    graph = build_graph(kmer_dict)
+    #draw_graph(graph, 'testgraph.png')
 
 if __name__ == '__main__':
     main()
