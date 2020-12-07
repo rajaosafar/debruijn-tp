@@ -66,16 +66,31 @@ def get_arguments():
 
 
 def read_fastq(fastq_file):
-    pass
-
+    with open(fastq_file, "rt") as myfile:
+        for line in myfile:
+            yield next(myfile)
+            next(myfile)
+            next(myfile)
 
 def cut_kmer(read, kmer_size):
-    pass
-
+    for i, letter in enumerate(read):
+        if i<=len(read)-kmer_size-1:
+            yield read[i:i+kmer_size]
 
 def build_kmer_dict(fastq_file, kmer_size):
-    pass
+    lines = read_fastq(fastq_file)
+    kmers = []
+    for line in lines:
+        for kmer in cut_kmer(line, kmer_size):
+            kmers.append(kmer)
 
+    dict_kmers = dict()
+    for kmer in kmers:
+        if kmer not in dict_kmers.keys():
+            dict_kmers[kmer]=1
+        else:
+            dict_kmers[kmer]+=1
+    return dict_kmers
 
 def build_graph(kmer_dict):
     pass
@@ -88,7 +103,7 @@ def std(data):
     pass
 
 
-def select_best_path(graph, path_list, path_length, weight_avg_list, 
+def select_best_path(graph, path_list, path_length, weight_avg_list,
                      delete_entry_node=False, delete_sink_node=False):
     pass
 
@@ -128,6 +143,10 @@ def main():
     """
     # Get arguments
     args = get_arguments()
+
+    fastq_file = args.fastq_file
+
+    print(build_kmer_dict(fastq_file, 3))
 
 if __name__ == '__main__':
     main()
