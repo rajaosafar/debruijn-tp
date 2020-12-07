@@ -126,16 +126,51 @@ def solve_out_tips(graph, ending_nodes):
     pass
 
 def get_starting_nodes(graph):
-    pass
+    nodes = []
+    for node in graph.nodes:
+        count=0
+        for p in graph.predecessors(node):
+            count +=1
+        if count==0:
+            nodes.append(node)
+    return nodes
 
 def get_sink_nodes(graph):
-    pass
+    nodes = []
+    for node in graph.nodes:
+        count=0
+        for p in graph.successors(node):
+            count +=1
+        if count==0:
+            nodes.append(node)
+    return nodes
 
 def get_contigs(graph, starting_nodes, ending_nodes):
-    pass
+    contigs = []
+    for s in starting_nodes:
+        for e in ending_nodes:
+            #all paths between s and e
+            all_paths = nx.all_simple_paths(graph,s,e)
+            all_paths = list(all_paths)
+
+            for path in all_paths:
+                contig = path[0]
+                for st in path[1:]:
+                    contig += st[len(st)-1:]
+                contigs.append((contig,len(contig)))
+    return contigs
+
+def fill(text, width=80):
+    """Split text with a line return to respect fasta format"""
+    return os.linesep.join(text[i:i+width] for i in range(0, len(text), width))
+
 
 def save_contigs(contigs_list, output_file):
-    pass
+    with open(output_file, "wt") as myfile:
+        for i, (contig, len_contig) in enumerate(contigs_list):
+            myfile.write(">contig_"+str(i)+ " len="+str(len_contig)+"\n")
+            myfile.write(fill(contig, width=80)+"\n")
+
 
 def draw_graph(graph, graphimg_file):
     """Draw the graph
@@ -168,10 +203,15 @@ def main():
     args = get_arguments()
 
     fastq_file = args.fastq_file
-    kmer_dict = build_kmer_dict(fastq_file, 3)
-    print(kmer_dict)
+    kmer_dict = build_kmer_dict(fastq_file, 21)
+
     graph = build_graph(kmer_dict)
-    #draw_graph(graph, 'testgraph.png')
+
+    starting_nodes=get_starting_nodes(graph)
+    ending_nodes=get_sink_nodes(graph)
+
+    contigs = get_contigs(graph, starting_nodes, ending_nodes)
+    save_contigs(contigs,"test.fna")
 
 if __name__ == '__main__':
     main()
