@@ -16,15 +16,16 @@
 import argparse
 import os
 import sys
-import networkx as nx
-import matplotlib
-from operator import itemgetter
-import random
-random.seed(9001)
-from random import randint
 import statistics
-import matplotlib.pyplot as plt
+import random
+from random import randint
+random.seed(9001)
 import itertools
+from operator import itemgetter
+import matplotlib
+import matplotlib.pyplot as plt
+import networkx as nx
+
 
 __author__ = "Sarah Rajaosafara"
 __copyright__ = "Universite Paris Diderot"
@@ -68,16 +69,16 @@ def get_arguments():
 
 def read_fastq(fastq_file):
     with open(fastq_file, "rt") as myfile:
-        for line in myfile:
+        for _ in myfile:
             # Remove the '\n' at the end of each line
             yield next(myfile).replace('\n', '')
             next(myfile)
             next(myfile)
 
 def cut_kmer(read, kmer_size):
-    for i, letter in enumerate(read):
+    for i, _ in enumerate(read):
         # Only take kmer of size kmer_size
-        if i<=len(read)-kmer_size:
+        if i <= len(read)-kmer_size:
             yield read[i:i+kmer_size]
 
 
@@ -93,9 +94,9 @@ def build_kmer_dict(fastq_file, kmer_size):
     # For each kmer, if it is not in the dict, add occurence of 1, else increment the occurence
     for kmer in kmers:
         if kmer not in dict_kmers.keys():
-            dict_kmers[kmer]=1
+            dict_kmers[kmer] = 1
         else:
-            dict_kmers[kmer]+=1
+            dict_kmers[kmer] += 1
     return dict_kmers
 
 def build_graph(kmer_dict):
@@ -109,19 +110,19 @@ def remove_paths(graph, path_list, delete_entry_node, delete_sink_node):
     # For each path, delete the nodes between the entry and sink nodes if they exist in the graph
     for path in path_list:
         if not delete_entry_node and not delete_sink_node:
-            for i in range(1,len(path)-1):
+            for i in range(1, len(path)-1):
                 if path[i] in graph.nodes:
                     graph.remove_node(path[i])
         elif delete_entry_node and not delete_sink_node:
-            for i in range(0,len(path)-1):
+            for i in range(0, len(path)-1):
                 if path[i] in graph.nodes:
                     graph.remove_node(path[i])
         elif not delete_entry_node and delete_sink_node:
-            for i in range(1,len(path)):
+            for i in range(1, len(path)):
                 if path[i] in graph.nodes:
                     graph.remove_node(path[i])
         else:
-            for i in range(0,len(path)):
+            for i in range(0, len(path)):
                 if path[i] in graph.nodes:
                     graph.remove_node(path[i])
     return graph
@@ -143,7 +144,8 @@ def select_best_path(graph, path_list, path_length, weight_avg_list,
             heavier_list.append(path_list[i])
             new_lengths.append(path_length[i])
 
-    # Get the list of the paths with a length equal to the max length among the paths in the new list
+    # Get the list of the paths with a length equal to the max length
+    # among the paths in the new list
     longest_val = max(new_lengths)
     longest_list = []
     for i in range(len(heavier_list)):
@@ -151,7 +153,7 @@ def select_best_path(graph, path_list, path_length, weight_avg_list,
             longest_list.append(heavier_list[i])
 
     # Select a random path among the paths in the new list
-    random_index = random.randint(0,len(longest_list)-1)
+    random_index = randint(0, len(longest_list)-1)
 
     # Remove it from the initial path_list
     path_list.remove(longest_list[random_index])
@@ -161,16 +163,16 @@ def select_best_path(graph, path_list, path_length, weight_avg_list,
 
 
 def path_average_weight(graph, path):
-    s=0
+    sum_weights = 0
     # Add all the weights
     for i in range(len(path)-1):
-        s += graph[path[i]][path[i+1]]['weight']
+        sum_weights += graph[path[i]][path[i+1]]['weight']
     # Divide by the number of weights
-    return s/(len(path)-1)
+    return sum_weights/(len(path)-1)
 
 def solve_bubble(graph, ancestor_node, descendant_node):
     # Get all the paths between the ancestor node and the descendant node
-    all_paths = nx.all_simple_paths(graph,ancestor_node,descendant_node)
+    all_paths = nx.all_simple_paths(graph, ancestor_node, descendant_node)
     all_paths = list(all_paths)
 
     # Get a list with all the lengths
@@ -179,7 +181,7 @@ def solve_bubble(graph, ancestor_node, descendant_node):
     weights = []
     for path in all_paths:
         lengths.append(len(path))
-        weights.append(path_average_weight(graph,path))
+        weights.append(path_average_weight(graph, path))
 
     # Select the best path among these paths
     return select_best_path(graph, all_paths, lengths, weights)
@@ -187,28 +189,28 @@ def solve_bubble(graph, ancestor_node, descendant_node):
 def simplify_bubbles(graph):
     couples = []
     # For each node
-    for e in graph.nodes:
+    for end in graph.nodes:
         # Get a list of all the predecessors
-        preds = list(graph.predecessors(e))
+        preds = list(graph.predecessors(end))
         ancestors = []
         # If there is more than one predecessor
-        if len(preds)>1:
+        if len(preds) > 1:
             # Look at the lowest common ancestor between each pair of predecessors
-            for node1, node2 in itertools.combinations(preds,2):
+            for node1, node2 in itertools.combinations(preds, 2):
                 # If there is one, add it to the list of ancestors
                 # (there is a bubble between s and e)
-                s = nx.lowest_common_ancestor(graph, node1, node2, None)
-                if s is not None:
-                    ancestors.append(s)
+                start = nx.lowest_common_ancestor(graph, node1, node2, None)
+                if start is not None:
+                    ancestors.append(start)
             # Get a list of couples representing a bubble
-            for s in list(set(ancestors)):
-                couples.append((s,e))
+            for start in list(set(ancestors)):
+                couples.append((start, end))
 
     # Remove each bubble
-    for s,e in couples:
+    for start, end in couples:
         # If the node has not been removed yet
-        if s in graph.nodes and e in graph.nodes:
-            graph = solve_bubble(graph,s,e)
+        if start in graph.nodes and end in graph.nodes:
+            graph = solve_bubble(graph, start, end)
 
     return graph
 
@@ -216,19 +218,19 @@ def solve_entry_tips(graph, starting_nodes):
     all_paths = []
     # For all nodes with more than 1 predecessor, get all paths starting at a starting node
     for node in graph.nodes:
-        if len(list(graph.predecessors(node)))>1:
+        if len(list(graph.predecessors(node))) > 1:
             for start in starting_nodes:
-                unique_path = list(nx.all_simple_paths(graph,start,node))
-                if len(unique_path)>0:
+                unique_path = list(nx.all_simple_paths(graph, start, node))
+                if len(unique_path) > 0:
                     all_paths.append(unique_path[0])
 
     # If there are multiple paths, keep the best one
-    if len(all_paths)>1:
+    if len(all_paths) > 1:
         lengths = []
         weights = []
         for path in all_paths:
             lengths.append(len(path))
-            weights.append(path_average_weight(graph,path))
+            weights.append(path_average_weight(graph, path))
 
         return select_best_path(graph, all_paths, lengths, weights, delete_entry_node=True)
     return graph
@@ -237,19 +239,19 @@ def solve_out_tips(graph, ending_nodes):
     all_paths = []
     # For all nodes with more than 1 successor, get all paths ending at an ending node
     for node in graph.nodes:
-        if len(list(graph.successors(node)))>1:
+        if len(list(graph.successors(node))) > 1:
             for end in ending_nodes:
-                unique_path = list(nx.all_simple_paths(graph,node,end))
-                if len(unique_path)>0:
+                unique_path = list(nx.all_simple_paths(graph, node, end))
+                if len(unique_path) > 0:
                     all_paths.append(unique_path[0])
 
-    # If there are multiple paths, keep the best one 
-    if len(all_paths)>1:
+    # If there are multiple paths, keep the best one
+    if len(all_paths) > 1:
         lengths = []
         weights = []
         for path in all_paths:
             lengths.append(len(path))
-            weights.append(path_average_weight(graph,path))
+            weights.append(path_average_weight(graph, path))
 
         return select_best_path(graph, all_paths, lengths, weights, delete_sink_node=True)
     return graph
@@ -258,11 +260,11 @@ def get_starting_nodes(graph):
     nodes = []
     # For each node, count the number of predecessors
     for node in graph.nodes:
-        count=0
-        for p in graph.predecessors(node):
-            count +=1
+        count = 0
+        for _ in graph.predecessors(node):
+            count += 1
         # If it has no predecessor, it is a starting node
-        if count==0:
+        if count == 0:
             nodes.append(node)
     return nodes
 
@@ -270,29 +272,29 @@ def get_sink_nodes(graph):
     nodes = []
     # For each node, count the number of successors
     for node in graph.nodes:
-        count=0
-        for p in graph.successors(node):
-            count +=1
+        count = 0
+        for _ in graph.successors(node):
+            count += 1
         # If it has no successor, it is a sink node
-        if count==0:
+        if count == 0:
             nodes.append(node)
     return nodes
 
 def get_contigs(graph, starting_nodes, ending_nodes):
     contigs = []
-    for s in starting_nodes:
-        for e in ending_nodes:
-            # Get all the paths between s and e
-            all_paths = nx.all_simple_paths(graph,s,e)
+    for start in starting_nodes:
+        for end in ending_nodes:
+            # Get all the paths between start and end
+            all_paths = nx.all_simple_paths(graph, start, end)
             all_paths = list(all_paths)
 
             for path in all_paths:
                 # Get the content of the first node
                 contig = path[0]
                 # Add the last letter of all the other nodes to the contig
-                for st in path[1:]:
-                    contig += st[len(st)-1:]
-                contigs.append((contig,len(contig)))
+                for other in path[1:]:
+                    contig += other[len(other)-1:]
+                contigs.append((contig, len(contig)))
     return contigs
 
 def fill(text, width=80):
@@ -361,7 +363,7 @@ def main():
 
     # Save contigs
     contigs = get_contigs(graph, starting_nodes, ending_nodes)
-    save_contigs(contigs,output_file)
+    save_contigs(contigs, output_file)
 
 
 if __name__ == '__main__':
