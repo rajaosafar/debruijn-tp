@@ -26,13 +26,13 @@ import statistics
 import matplotlib.pyplot as plt
 import itertools
 
-__author__ = "Your Name"
+__author__ = "Sarah Rajaosafara"
 __copyright__ = "Universite Paris Diderot"
-__credits__ = ["Your Name"]
+__credits__ = ["Sarah Rajaosafara"]
 __license__ = "GPL"
 __version__ = "1.0.0"
-__maintainer__ = "Your Name"
-__email__ = "your@email.fr"
+__maintainer__ = "Sarah Rajaosafara"
+__email__ = "rajaosafar@eisti.eu"
 __status__ = "Developpement"
 
 def isfile(path):
@@ -213,10 +213,46 @@ def simplify_bubbles(graph):
     return graph
 
 def solve_entry_tips(graph, starting_nodes):
-    pass
+    all_paths = []
+    # For all nodes with more than 1 predecessor, get all paths starting at a starting node
+    for node in graph.nodes:
+        if len(list(graph.predecessors(node)))>1:
+            for start in starting_nodes:
+                unique_path = list(nx.all_simple_paths(graph,start,node))
+                if len(unique_path)>0:
+                    all_paths.append(unique_path[0])
+
+    # If there are multiple paths, keep the best one
+    if len(all_paths)>1:
+        lengths = []
+        weights = []
+        for path in all_paths:
+            lengths.append(len(path))
+            weights.append(path_average_weight(graph,path))
+
+        return select_best_path(graph, all_paths, lengths, weights, delete_entry_node=True)
+    return graph
 
 def solve_out_tips(graph, ending_nodes):
-    pass
+    all_paths = []
+    # For all nodes with more than 1 successor, get all paths ending at an ending node
+    for node in graph.nodes:
+        if len(list(graph.successors(node)))>1:
+            for end in ending_nodes:
+                unique_path = list(nx.all_simple_paths(graph,node,end))
+                if len(unique_path)>0:
+                    all_paths.append(unique_path[0])
+
+    # If there are multiple paths, keep the best one 
+    if len(all_paths)>1:
+        lengths = []
+        weights = []
+        for path in all_paths:
+            lengths.append(len(path))
+            weights.append(path_average_weight(graph,path))
+
+        return select_best_path(graph, all_paths, lengths, weights, delete_sink_node=True)
+    return graph
 
 def get_starting_nodes(graph):
     nodes = []
@@ -303,32 +339,29 @@ def main():
     args = get_arguments()
 
     fastq_file = args.fastq_file
-    kmer_dict = build_kmer_dict(fastq_file, 21)
+    kmer_size = args.kmer_size
+    output_file = args.output_file
 
+    # Read the file
+    kmer_dict = build_kmer_dict(fastq_file, kmer_size)
+
+    # Build the graph
     graph = build_graph(kmer_dict)
 
-    starting_nodes=get_starting_nodes(graph)
-    ending_nodes=get_sink_nodes(graph)
+    # Simplify bubbles
+    graph = simplify_bubbles(graph)
 
+    # Solve entry tips
+    starting_nodes = get_starting_nodes(graph)
+    graph = solve_entry_tips(graph, starting_nodes)
+
+    # Solve out tips
+    ending_nodes = get_sink_nodes(graph)
+    graph = solve_out_tips(graph, ending_nodes)
+
+    # Save contigs
     contigs = get_contigs(graph, starting_nodes, ending_nodes)
-    save_contigs(contigs,"test.fna")
-
-    #path = ['TCAGAGCTCTAGAGTTGGTT', 'CAGAGCTCTAGAGTTGGTTC']
-    #print(path_average_weight(graph, path))
-
-    graph_1 = nx.DiGraph()
-    graph_1.add_weighted_edges_from([(3,2,1),(2,8,2),(8,6,3),(6,7,4),(2,4,5),(4,7,6),
-                                    (10,7,7),(3,12,8),(12,11,9),(11,7,10)])
-    graph_1 = simplify_bubbles(graph_1)
-
-    print(graph_1.edges)
-
-    graph_2 = nx.DiGraph()
-    graph_2.add_weighted_edges_from([(3,2,1),(2,8,2),(8,9,3),(9,5,4),(5,6,5),(2,4,6),
-                                    (4,9,7),(4,5,8),(2,10,9),(10,5,10),(5,7,11)])
-    graph_2 = simplify_bubbles(graph_2)
-
-    print(graph_2.edges)
+    save_contigs(contigs,output_file)
 
 
 if __name__ == '__main__':
