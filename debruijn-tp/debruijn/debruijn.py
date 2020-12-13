@@ -17,15 +17,11 @@ import argparse
 import os
 import sys
 import statistics
+import itertools
 import random
 from random import randint
 random.seed(9001)
-import itertools
-from operator import itemgetter
-import matplotlib
-import matplotlib.pyplot as plt
 import networkx as nx
-
 
 __author__ = "Sarah Rajaosafara"
 __copyright__ = "Universite Paris Diderot"
@@ -80,7 +76,6 @@ def cut_kmer(read, kmer_size):
         # Only take kmer of size kmer_size
         if i <= len(read)-kmer_size:
             yield read[i:i+kmer_size]
-
 
 def build_kmer_dict(fastq_file, kmer_size):
     kmers = []
@@ -161,7 +156,6 @@ def select_best_path(graph, path_list, path_length, weight_avg_list,
     # Remove all the paths in path_list
     return remove_paths(graph, path_list, delete_entry_node, delete_sink_node)
 
-
 def path_average_weight(graph, path):
     sum_weights = 0
     # Add all the weights
@@ -198,7 +192,7 @@ def simplify_bubbles(graph):
             # Look at the lowest common ancestor between each pair of predecessors
             for node1, node2 in itertools.combinations(preds, 2):
                 # If there is one, add it to the list of ancestors
-                # (there is a bubble between s and e)
+                # (there is a bubble between start and end)
                 start = nx.lowest_common_ancestor(graph, node1, node2, None)
                 if start is not None:
                     ancestors.append(start)
@@ -208,7 +202,7 @@ def simplify_bubbles(graph):
 
     # Remove each bubble
     for start, end in couples:
-        # If the node has not been removed yet
+        # If the nodes have not been removed yet
         if start in graph.nodes and end in graph.nodes:
             graph = solve_bubble(graph, start, end)
 
@@ -220,9 +214,9 @@ def solve_entry_tips(graph, starting_nodes):
     for node in graph.nodes:
         if len(list(graph.predecessors(node))) > 1:
             for start in starting_nodes:
-                unique_path = list(nx.all_simple_paths(graph, start, node))
-                if len(unique_path) > 0:
-                    all_paths.append(unique_path[0])
+                paths = list(nx.all_simple_paths(graph, start, node))
+                for path in paths:
+                    all_paths.append(path)
 
     # If there are multiple paths, keep the best one
     if len(all_paths) > 1:
@@ -241,9 +235,9 @@ def solve_out_tips(graph, ending_nodes):
     for node in graph.nodes:
         if len(list(graph.successors(node))) > 1:
             for end in ending_nodes:
-                unique_path = list(nx.all_simple_paths(graph, node, end))
-                if len(unique_path) > 0:
-                    all_paths.append(unique_path[0])
+                paths = list(nx.all_simple_paths(graph, node, end))
+                for path in paths:
+                    all_paths.append(path)
 
     # If there are multiple paths, keep the best one
     if len(all_paths) > 1:
@@ -301,34 +295,12 @@ def fill(text, width=80):
     """Split text with a line return to respect fasta format"""
     return os.linesep.join(text[i:i+width] for i in range(0, len(text), width))
 
-
 def save_contigs(contigs_list, output_file):
     # Write each contig to the file
     with open(output_file, "wt") as myfile:
         for i, (contig, len_contig) in enumerate(contigs_list):
             myfile.write(">contig_"+str(i)+ " len="+str(len_contig)+"\n")
             myfile.write(fill(contig, width=80)+"\n")
-
-
-def draw_graph(graph, graphimg_file):
-    """Draw the graph
-    """
-    fig, ax = plt.subplots()
-    elarge = [(u, v) for (u, v, d) in graph.edges(data=True) if d['weight'] > 3]
-    #print(elarge)
-    esmall = [(u, v) for (u, v, d) in graph.edges(data=True) if d['weight'] <= 3]
-    #print(elarge)
-    # Draw the graph with networkx
-    #pos=nx.spring_layout(graph)
-    pos = nx.random_layout(graph)
-    nx.draw_networkx_nodes(graph, pos, node_size=6)
-    nx.draw_networkx_edges(graph, pos, edgelist=elarge, width=6)
-    nx.draw_networkx_edges(graph, pos, edgelist=esmall, width=6, alpha=0.5,
-                           edge_color='b', style='dashed')
-    #nx.draw_networkx(graph, pos, node_size=10, with_labels=False)
-    # save image
-    plt.savefig(graphimg_file)
-
 
 #==============================================================
 # Main program
@@ -364,7 +336,6 @@ def main():
     # Save contigs
     contigs = get_contigs(graph, starting_nodes, ending_nodes)
     save_contigs(contigs, output_file)
-
 
 if __name__ == '__main__':
     main()
